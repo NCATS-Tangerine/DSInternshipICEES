@@ -33,6 +33,7 @@ We first get the univariate counts for all features (variables) the ICEES databa
 
 
 ```{r univariate, message=FALSE}
+httr::set_config(config(ssl_verifypeer = 0L))
 ## no need to see uninformative messages in the markdown document
 url <- "https://icees.renci.org/1.0.0/patient/2010/cohort/COHORT%3A22/features"
 ## extract the data in json format
