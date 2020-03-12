@@ -41,25 +41,6 @@ My current understanding of the OpenAPI, is that the request for bivariate table
 In order to do the hard coding, we need to know the bins for each feature. Here is that information. Note that there are 30 rows in the first table. After the first 10 rows, all of the counts are 10 or less. It seems like the higher ones should be binned before proceeding to the two-way tables.
 
 
-```{r}
-## uni_df was created in the document 02_make_univariate_tables.Rmd
-load("RData/uni_df.RData")
-uni_df %>%
-  filter(Feature == "EDVisits")
-```
-
-
-```{r}
-uni_df %>%
-  filter(Feature == "MaxPMExposure")
-```
-
-
-```{r}
-uni_df %>%
-  filter(Feature == "RoadwayExposure")
-```
-
 ## Creating the bivariate tables
 
 In order to make the code clearer, and perhaps pave the way for later automation, we create some variables that will be used in the OpenAPI calls. The first call will be `TotalEDInpatientVisits` versus `MaxDailyPM2.5Exposure_qcut`.
@@ -71,92 +52,13 @@ In order to make the code clearer, and perhaps pave the way for later automation
 ### Table 1. Total ED Inpatient Visits versuys Maximum Daily PM 2.5 Exposure
 I picked a generic name for the table, for the time being. There probably should be more internal error checking.
 
-```{r, message=FALSE}
-body_bivar1 ='{
-                     "feature_a": {
-                     "TotalEDInpatientVisits": [
-                     {
-                     "operator": "=",
-                     "value": 0
-                     }, {
-                     "operator": "=",
-                     "value": 1
-                     }, {
-                     "operator": "=",
-                     "value": 2
-                     },{
-                     "operator": "=",
-                     "value": 3
-                      },{
-                     "operator": "=",
-                    "value": 4
-                     }, {
-                     "operator": "=",
-                     "value": 5
-                     }, {
-                     "operator": "=",
-                     "value": 6
-                     }, {
-                     "operator": "=",
-                     "value": 7
-                     }, {
-                     "operator": "=",
-                     "value": 8
-                     }, {
-                     "operator": "=",
-                      "value": 9
-                     }
-                     ]
-                     },
-                     "feature_b": {
-                     "MaxDailyPM2.5Exposure_qcut": [
-                     {
-                     "operator": "=",
-                     "value": 1
-                     },
-                     {
-                     "operator": "=",
-                     "value": 2
-                     },
-                     {
-                     "operator": "=",
-                     "value": 3
-                     },
-                     {
-                     "operator": "=",
-                    "value": 4
-                     },
-                     {
-                     "operator": "=",
-                     "value": 5
-                     }
-                     ]
-                     }
-                     }'
-## bivar1 is what Rose called PM2.5data
-bivar1_call <- httr::POST("https://icees.renci.org/1.0.0/patient/2010/cohort/COHORT%3A22/feature_association2",
-                     body = body_bivar1,
-          accept_json(),
-          content_type("application/json"),
-          encode = "json")
-bivar1_text <- httr::content(bivar1_call, "text")
-bivar1_list <- jsonlite::fromJSON(bivar1_text, flatten = TRUE)$`return value`
-## have to hard code these values
-EDVisits = c(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
-MaxExposure = c(1, 2, 3, 4, 5)
-for(i in 1:5){
-  temp_df <- data.frame(EDVisits = EDVisits, 
-                        MaxPMExposure = MaxExposure[i],
-                        Frequency = bivar1_list$feature_matrix[[i]]$frequency)
-  if(i == 1) {
-    bivar1_df = temp_df
-  } else {
-    bivar1_df <- rbind(bivar1_df,temp_df)
-  }
-}
-bivar_EDvsME_df = bivar1_df
-bivar_EDvsME_df
+```{r}
+cohort.id <- get_cohort_id('{}')
+```
 
+```{r, message=FALSE}
+bivar_EDvsPM25_df = bivariate(2010,cohort.id,ED,PM25)
+bivar_EDvsPM25_df
 ```
 
 ### Table 2. Total ED Inpatient Visits verus Major Roadway Highway Exposure
@@ -164,94 +66,8 @@ bivar_EDvsME_df
 The second call will be `TotalEDInpatientVisits` versus `MajorRoadwayHighwayExposure`.
 
 ```{r, message=FALSE}
-body_bivar2 ='{
-                  "feature_a": {
-                  "TotalEDInpatientVisits": [
-                     {
-                  "operator": "=",
-                  "value": 0
-                  }, {
-                  "operator": "=",
-                  "value": 1
-                  }, {
-                  "operator": "=",
-                  "value": 2
-                  },{
-                  "operator": "=",
-                  "value": 3
-                  },{
-                  "operator": "=",
-                  "value": 4
-                  }, {
-                  "operator": "=",
-                  "value": 5
-                  }, {
-                  "operator": "=",
-                  "value": 6
-                  },
-                  {
-                  "operator": "=",
-                  "value": 7
-                  }, {
-                  "operator": "=",
-                  "value": 8
-                  }, {
-                  "operator": "=",
-                  "value": 9
-                  }
-                  ]
-                  },
-                  "feature_b": {
-                  "MajorRoadwayHighwayExposure": [
-                  {
-                  "operator": "=",
-                  "value": 1
-                  },
-                  {
-                  "operator": "=",
-                  "value": 2
-                  },
-                  {
-                  "operator": "=",
-                  "value": 3
-                  },
-                  {
-                  "operator": "=",
-                  "value": 4
-                  },
-                  {
-                  "operator": "=",
-                  "value": 5
-                  },
-                  {
-                  "operator": "=",
-                  "value": 6
-                  }
-                  ]
-                  }
-                  }'
-bivar2_call <- httr::POST("https://icees.renci.org/1.0.0/patient/2010/cohort/COHORT%3A22/feature_association2",
-                     body = body_bivar2,
-          accept_json(),
-          content_type("application/json"),
-          encode = "json")
-bivar2_text <- httr::content(bivar2_call, "text")
-bivar2_list <- jsonlite::fromJSON(bivar2_text, flatten = TRUE)$`return value`
-## have to hard code these values
-EDVisits = c(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
-MaxRoadway = c(1, 2, 3, 4, 5, 6)
-for(i in 1:6){
-  temp_df <- data.frame(EDVisits = EDVisits, 
-                        RoadwayExposure = MaxRoadway[i],
-                        Frequency = bivar2_list$feature_matrix[[i]]$frequency)
-  if(i == 1) {
-    bivar2_df = temp_df
-  } else {
-    bivar2_df <- rbind(bivar2_df,temp_df)
-  }
-}
-bivar_EDvsRE_df = bivar2_df
-bivar_EDvsRE_df
+bivar_EDvsRACE_df = bivariate(2010, cohort.id, ED, RACE)
+bivar_EDvsRACE_df
 ```
 
 ### Table 3. Major Roadway Highway Exposure versus Maximum Daily PM2.5 Exposure
@@ -259,93 +75,17 @@ bivar_EDvsRE_df
 The third call will be for `MajorRoadwayHighwayExposure` vs `MaxDailyPM2.5Exposure_qcut`
 
 ```{r, message=FALSE}
-body_bivar3 ='{
-                      "feature_a": {
-                      "MajorRoadwayHighwayExposure": [
-                      {
-                      "operator": "=",
-                      "value": 1
-                      },
-                      {
-                      "operator": "=",
-                      "value": 2
-                      },
-                      {
-                      "operator": "=",
-                      "value": 3
-                      },
-                      {
-                      "operator": "=",
-                      "value": 4
-                      },
-                      {
-                      "operator": "=",
-                      "value": 5
-                      },
-                      {
-                      "operator": "=",
-                      "value": 6
-                      }
-                      ]
-                      },
-                      "feature_b": {
-                      "MaxDailyPM2.5Exposure_qcut": [
-                      {
-                      "operator": "=",
-                      "value": 1
-                      },
-                      {
-                      "operator": "=",
-                      "value": 2
-                      },
-                      {
-                      "operator": "=",
-                      "value": 3
-                      },
-                      {
-                      "operator": "=",
-                      "value": 4
-                      },
-                      {
-                      "operator": "=",
-                      "value": 5
-                      }
-                      ]
-                      }
-                      }'
-bivar3_call <- httr::POST("https://icees.renci.org/1.0.0/patient/2010/cohort/COHORT%3A22/feature_association2",
-                     body = body_bivar3,
-          accept_json(),
-          content_type("application/json"),
-          encode = "json")
-bivar3_text <- httr::content(bivar3_call, "text")
-bivar3_list <- jsonlite::fromJSON(bivar3_text, flatten = TRUE)$`return value`
-## have to hard code these values
-MaxRoadway = c(1, 2, 3, 4, 5, 6)
-MaxExposure = c(1, 2, 3, 4, 5)
-for(i in 1:5){
-  temp_df <- data.frame(RoadwayExposure = MaxRoadway, 
-                        MaxPMExposure = MaxExposure[i],
-                        Frequency = bivar3_list$feature_matrix[[i]]$frequency)
-  if(i == 1) {
-    bivar3_df = temp_df
-  } else {
-    bivar3_df <- rbind(bivar3_df,temp_df)
-  }
-}
-bivar_REvsME_df = bivar3_df
-bivar_REvsME_df
+bivar_RACEvsPM25_df = bivariate(2010, cohort.id, RACE, PM25)
+bivar_RACEvsPM25_df
 ```
 
 ## Save the resulting data frames
 
 
 ```{r}
-save(bivar_REvsME_df, file = "RData/bivar_REvsME_df.RData")
-save(bivar_EDvsRE_df, file = "RData/bivar_EDvsRE_df.RData")
-save(bivar_EDvsME_df, file = "RData/bivar_EDvsME_df.RData")
-
-
+save(bivar_EDvsPM25_df, file = "RData/bivar_EDvsPM25_df.RData")
+save(bivar_EDvsRACE_df, file = "RData/bivar_EDvsRACE_df.RData")
+save(bivar_RACEvsPM25_df, file = "RData/bivar_RACEvsPM25_df.RData")
 ```
 
 

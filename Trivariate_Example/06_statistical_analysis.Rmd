@@ -11,15 +11,18 @@ library(knitr)
 library(tidyverse)
 library(MASS)
 load("RData/tri_df.RData")
+tri_df = tri_df %>%
+  mutate(TotalEDInpatientVisits = fct_relevel(TotalEDInpatientVisits, ">=10", after=Inf))
+
 ```
 
 ## Graphical analysis
 
-```{r, fig.width = 7}
-ggplot(tri_df, aes(x = EDVisits, y = log(Frequency+1), color = MaxPMExposure)) +
+```{r, message = FALSE, fig.width = 20}
+ggplot(tri_df, aes(x = !!(ED$expr), y = log(Frequency+1), color = !!(PM25$expr))) +
   geom_point() +
   geom_line() +
-  facet_grid(RoadwayExposure ~ MaxPMExposure)
+  facet_grid(eval(RACE$expr) ~ eval(PM25$expr))
 ```
 
 
@@ -28,19 +31,19 @@ ggplot(tri_df, aes(x = EDVisits, y = log(Frequency+1), color = MaxPMExposure)) +
 In this session, we create a table from the trivariate data frame and test some standard hypotheses using a log linear model.
 
 ```{r, message=FALSE}
-tri_table <- xtabs(Frequency ~ EDVisits + RoadwayExposure + MaxPMExposure, data = tri_df)
+tri_table <- xtabs(Frequency ~ TotalEDInpatientVisits + Race + `AvgDailyPM2.5Exposure_StudyAvg_qcut`, data = tri_df)
 kable(tri_table)
 ```
 
 First, we fit the full model and test for the three-way interaction.
 
 ```{r}
-mod1_fit <- loglm(Frequency  ~ EDVisits + RoadwayExposure + MaxPMExposure + EDVisits*RoadwayExposure + EDVisits*MaxPMExposure, tri_df)
+mod1_fit <- loglm(Frequency  ~ TotalEDInpatientVisits + Race + `AvgDailyPM2.5Exposure_StudyAvg_qcut` + TotalEDInpatientVisits * Race + TotalEDInpatientVisits * `AvgDailyPM2.5Exposure_StudyAvg_qcut`, tri_df)
 deviance(mod1_fit)
 ```
 
 ```{r}
-mod2_fit <- glm(Frequency  ~ EDVisits + RoadwayExposure + MaxPMExposure + EDVisits*RoadwayExposure + EDVisits*MaxPMExposure,
+mod2_fit <- glm(Frequency  ~ TotalEDInpatientVisits + Race + `AvgDailyPM2.5Exposure_StudyAvg_qcut` + TotalEDInpatientVisits * Race + TotalEDInpatientVisits * `AvgDailyPM2.5Exposure_StudyAvg_qcut`,
                 data = tri_df, family = poisson)
 summary(mod2_fit)
 ```
